@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-night-900 text-gray-100 font-sans antialiased overflow-x-hidden selection:bg-brand-500/30 selection:text-white;
+  }
+}
+
+/* Animasi flash skip ±10 detik di player */
+@keyframes skipPop {
+  0% { opacity: 0; transform: scale(0.9); }
+  20% { opacity: 1; transform: scale(1.05); }
+  80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+
+@layer components {
+  .poster-overlay {
+    background: linear-gradient(0deg, rgba(10, 10, 10, 1) 0%, rgba(10, 10, 10, 0.4) 50%, transparent 100%);
+  }
+  .glass-panel {
+    @apply bg-night-900/90 backdrop-blur-xl border-b border-white/5 shadow-sm;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-night-900;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-night-600 rounded-full hover:bg-night-500 transition-colors;
+}
+

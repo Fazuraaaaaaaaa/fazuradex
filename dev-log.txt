@@ -1,0 +1,45 @@
+
+> website-film@1.0.0 dev
+> concurrently "npm run dev:api" "npm run dev:ui"
+
+[0] 
+[0] > website-film@1.0.0 dev:api
+[0] > tsx watch src/server.ts
+[0] 
+[1] 
+[1] > website-film@1.0.0 dev:ui
+[1] > npm run dev --prefix frontend
+[1] 
+[1] 
+[1] > frontend@1.0.0 dev
+[1] > vite
+[1] 
+[1] 
+[1]   [32m[1mVITE[22m v6.4.3[39m  [2mready in [0m[1m1054[22m[2m[0m ms[22m
+[1] 
+[1]   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[1]   [32m➜[39m  [1mNetwork[22m: [36mhttp://10.2.0.2:[1m5173[22m/[39m
+[1]   [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.56.1:[1m5173[22m/[39m
+[1]   [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.9:[1m5173[22m/[39m
+[0] 🎬 FazuraDex Fullstack Server berjalan di http://localhost:4000
+[0]    - Frontend Web UI: http://localhost:4000
+[0]    - API Endpoint   : http://localhost:4000/api/movies
+[0] 🔄 Memulai auto-sync film terbaru (Now Playing, Upcoming, Trending)...
+[0] ✅ Auto-sync selesai: +0 baru, ~74 diupdate! (Total DB: 3699)
+[0] 06.13.25 [tsx] change in ./src\syncCatalog.ts Restarting...
+[0] 🎬 FazuraDex Fullstack Server berjalan di http://localhost:4000
+[0]    - Frontend Web UI: http://localhost:4000
+[0]    - API Endpoint   : http://localhost:4000/api/movies
+[0] 🔄 Memulai auto-sync film terbaru (Now Playing, Upcoming, Trending)...
+[0] 06.13.34 [tsx] change in ./src\syncCatalog.ts Restarting...
+[0] 🎬 FazuraDex Fullstack Server berjalan di http://localhost:4000
+[0]    - Frontend Web UI: http://localhost:4000
+[0]    - API Endpoint   : http://localhost:4000/api/movies
+[0] 🔄 Memulai auto-sync film terbaru (Now Playing, Upcoming, Trending)...
+[0] ✅ Auto-sync selesai: +0 baru, ~58 diupdate! (Total DB: 3699)
+[1] ^CTerminate batch job (Y/N)? 
+[0] ^C
+[1] ^CTerminate batch job (Y/N)? 
+[0] ^CTerminate batch job (Y/N)? 
+[1] npm run dev:ui exited with code 3221225786
+[0] npm run dev:api exited with code 3221225786
