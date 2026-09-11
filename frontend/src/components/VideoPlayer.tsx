@@ -428,6 +428,7 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
                 src={server.url}
                 title={movie.title}
                 className={`w-full h-full border-none transition-opacity duration-500 ${iframeLoading ? 'opacity-0' : 'opacity-100'}`}
+                sandbox="allow-same-origin allow-scripts allow-forms allow-presentation"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                 allowFullScreen
                 onLoad={() => setIframeLoading(false)}

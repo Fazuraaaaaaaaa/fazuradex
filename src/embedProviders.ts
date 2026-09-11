@@ -65,8 +65,43 @@ export async function resolveEmbedServers(
   }
 
   const def = defaultServers(tmdbId, mediaType, season, episode);
-  cache.set(key, { time: Date.now(), servers: def });
-  return def;
+  
+  // Melakukan pengecekan paralel untuk membuang server yang mati/merespon status error
+  const probeResults = await Promise.allSettled(
+    def.map(async (server) => {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(server.url, {
+          method: 'GET',
+          headers: { 'User-Agent': UA },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        
+        // Hapus server jika merespon HTTP Error fatal (seperti 404 Not Found, 500, dll)
+        if (!res.ok && [404, 500, 502, 503, 504].includes(res.status)) {
+          return null;
+        }
+        
+        return server;
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  let available = probeResults
+    .filter((r): r is PromiseFulfilledResult<EmbedServer | null> => r.status === 'fulfilled' && r.value !== null)
+    .map((r) => r.value as EmbedServer);
+
+  // Fallback jika vercel di-block (semua return null), kembalikan def
+  if (available.length === 0) {
+    available = def;
+  }
+
+  cache.set(key, { time: Date.now(), servers: available });
+  return available;
 }
 export async function checkEmbedHealth(
   tmdbId: string,
