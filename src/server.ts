@@ -47,7 +47,7 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:4000', 'http://127.0.0.1:4000'] }));
+app.use(cors()); // Allow all origins for production domains (fazuradex.web.id)
 app.use(express.json());
 
 // Optimasi: Kompresi response
@@ -466,3 +466,4 @@ if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
 }
 
 export default app;
+
