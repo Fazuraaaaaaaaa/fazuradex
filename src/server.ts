@@ -1,4 +1,4 @@
-import express, { type Request, type Response, type NextFunction } from 'express';
+﻿import express, { type Request, type Response, type NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
@@ -24,13 +24,13 @@ import { syncCatalog, QUICK_SOURCES } from './syncCatalog';
 
 /** Sinkronisasi background otomatis (Now Playing / Upcoming) setiap server nyala atau per 12 jam. */
 async function autoSyncLatest() {
-  console.log('🔄 Memulai auto-sync film terbaru (Now Playing, Upcoming, Trending)...');
+  console.log('ðŸ”„ Memulai auto-sync film terbaru (Now Playing, Upcoming, Trending)...');
   try {
     const stats = await syncCatalog(QUICK_SOURCES, DATA_FILE, { verbose: false });
     cache = null;
-    console.log(`✅ Auto-sync selesai: +${stats.added} baru, ~${stats.updated} diupdate! (Total DB: ${stats.total})`);
+    console.log(`âœ… Auto-sync selesai: +${stats.added} baru, ~${stats.updated} diupdate! (Total DB: ${stats.total})`);
   } catch (e) {
-    console.error('❌ Auto-sync gagal:', (e as Error).message);
+    console.error('âŒ Auto-sync gagal:', (e as Error).message);
   }
 }
 // Jalankan sinkronisasi sesaat setelah server siap, dan ulangi setiap 12 jam.
@@ -89,7 +89,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-/** GET /api/movies — list + search + filter + sort + pagination */
+/** GET /api/movies â€” list + search + filter + sort + pagination */
 app.get('/api/movies', async (req: Request, res: Response) => {
   const movies = loadMovies();
   const q = String(req.query.q ?? '').toLowerCase().trim();
@@ -124,7 +124,7 @@ app.get('/api/movies', async (req: Request, res: Response) => {
         const existingIds = new Set(movies.map((m) => m.id));
         const newMovies = live.filter((m) => !existingIds.has(m.id));
         if (newMovies.length > 0) {
-          console.log(`🔍 Live Search: Menemukan ${newMovies.length} film baru untuk "${q}". Disimpan ke database.`);
+          console.log(`ðŸ” Live Search: Menemukan ${newMovies.length} film baru untuk "${q}". Disimpan ke database.`);
           saveMovies([...newMovies, ...movies]);
           // gabungkan live ke result pencarian saat ini
           result = [...live, ...result];
@@ -187,7 +187,7 @@ app.get('/api/movies', async (req: Request, res: Response) => {
   });
 });
 
-/** GET /api/genres — daftar genre unik untuk filter */
+/** GET /api/genres â€” daftar genre unik untuk filter */
 app.get('/api/genres', (_req: Request, res: Response) => {
   const movies = loadMovies();
   const genres = new Set<string>();
@@ -195,7 +195,7 @@ app.get('/api/genres', (_req: Request, res: Response) => {
   res.json({ data: Array.from(genres).sort() });
 });
 
-/** GET /api/movies/stats — ringkasan data untuk dashboard */
+/** GET /api/movies/stats â€” ringkasan data untuk dashboard */
 app.get('/api/movies/stats', (_req: Request, res: Response) => {
   const movies = loadMovies();
   const rated = movies.filter((m) => (m.ratingValue ?? 0) > 0);
@@ -252,7 +252,7 @@ function pickStream(id: string) {
   return STREAM_CATALOG[hash % STREAM_CATALOG.length];
 }
 
-/** GET /api/movies/:id/health — cek kesehatan server video sebelum dimainkan */
+/** GET /api/movies/:id/health â€” cek kesehatan server video sebelum dimainkan */
 app.get('/api/movies/:id/health', async (req: Request, res: Response) => {
   const movies = loadMovies();
   const movie = movies.find((m) => m.id === req.params.id);
@@ -267,14 +267,14 @@ app.get('/api/movies/:id/health', async (req: Request, res: Response) => {
   res.json(health);
 });
 
-/** GET /api/movies/:id/stream — resolve URL HLS / Iframe untuk player */
+/** GET /api/movies/:id/stream â€” resolve URL HLS / Iframe untuk player */
 app.get('/api/movies/:id/stream', async (req: Request, res: Response) => {
   let movies = loadMovies();
   let movie = movies.find((m) => m.id === req.params.id);
   const season = parseInt(req.query.season as string) || 1;
   const episode = parseInt(req.query.episode as string) || 1;
 
-  // "Self-healing": konten belum ada di katalog lokal → tarik lengkap dari TMDB.
+  // "Self-healing": konten belum ada di katalog lokal â†’ tarik lengkap dari TMDB.
   if (!movie) {
     const fetched = await fetchMediaById(String(req.params.id));
     if (fetched) {
@@ -347,7 +347,7 @@ if (fs.existsSync(COMMENTS_FILE)) {
   try {
     commentsStore = JSON.parse(fs.readFileSync(COMMENTS_FILE, 'utf-8'));
   } catch (e) {
-    console.error('⚠️ Gagal membaca comments.json:', (e as Error).message);
+    console.error('âš ï¸ Gagal membaca comments.json:', (e as Error).message);
   }
 }
 
@@ -382,7 +382,7 @@ app.post('/api/movies/:id/comments', express.json(), (req: Request, res: Respons
   res.json({ status: 'ok', data: newComment });
 });
 
-/** GET /api/movies/:id — detail satu film */
+/** GET /api/movies/:id â€” detail satu film */
 app.get('/api/movies/:id', async (req: Request, res: Response) => {
   let movies = loadMovies();
   let movie = movies.find((m) => m.id === req.params.id);
@@ -413,7 +413,7 @@ app.get('/api/movies/:id', async (req: Request, res: Response) => {
   res.json({ data: movie, related });
 });
 
-/** POST /api/refresh — jalankan sinkronisasi cepat dan aman tanpa menimpa database */
+/** POST /api/refresh â€” jalankan sinkronisasi cepat dan aman tanpa menimpa database */
 app.post('/api/refresh', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const stats = await syncCatalog(QUICK_SOURCES, DATA_FILE, { verbose: false });
@@ -446,20 +446,23 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🎬 FazuraDex Fullstack Server berjalan di http://localhost:${PORT}`);
-  console.log(`   - Frontend Web UI: http://localhost:${PORT}`);
-  console.log(`   - API Endpoint   : http://localhost:${PORT}/api/movies`);
-});
+if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🎬 FazuraDex Fullstack Server berjalan di http://localhost:${PORT}`);
+    console.log(`   - Frontend Web UI: http://localhost:${PORT}`);
+    console.log(`   - API Endpoint   : http://localhost:${PORT}/api/movies`);
+  });
 
-server.on('error', (err: NodeJS.ErrnoException) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`\n❌ Port ${PORT} sudah dipakai aplikasi/proses lain.`);
-    console.error('   Ganti port dengan:  $env:PORT=4001; npm run dev:api');
-    console.error('   Atau tutup proses lama:  taskkill /F /IM node.exe\n');
-  } else {
-    console.error('Gagal memulai server:', err.message);
-  }
-  process.exit(1);
-});
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ Port ${PORT} sudah dipakai aplikasi/proses lain.`);
+      console.error('   Ganti port dengan:  $env:PORT=4001; npm run dev:api');
+      console.error('   Atau tutup proses lama:  taskkill /F /IM node.exe\n');
+    } else {
+      console.error('Gagal memulai server:', err.message);
+    }
+    process.exit(1);
+  });
+}
 
+export default app;
