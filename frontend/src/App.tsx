@@ -17,7 +17,7 @@ export function HeroSection({ movie, onWatch, onDetail }: HeroSectionProps) {
   const year = yearMatch ? yearMatch[0] : '';
 
   return (
-    <section className="relative h-[420px] md:h-[520px] w-full -mt-16 z-0 mb-4 overflow-hidden">
+    <section className="relative h-[380px] sm:h-[420px] md:h-[520px] w-full -mt-16 z-0 mb-4 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         {movie.posterUrl && (
