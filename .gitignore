@@ -4,3 +4,8 @@ dist/
 *.log
 *.txt
 !dev-log.txt
+
+.vercel
+
+*.csv
+output/*.csv
