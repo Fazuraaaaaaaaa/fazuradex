@@ -22,20 +22,49 @@ function saveMovies(movies: MovieDetail[]) {
 
 import { syncCatalog, QUICK_SOURCES } from './syncCatalog';
 
-/** Sinkronisasi background otomatis (Now Playing / Upcoming) setiap server nyala atau per 12 jam. */
-async function autoSyncLatest() {
-  console.log('ðŸ”„ Memulai auto-sync film terbaru (Now Playing, Upcoming, Trending)...');
+/** Sinkronisasi background otomatis — menambah terus film "Sedang Tayang di Bioskop", upcoming & trending. */
+let isSyncing = false;
+let lastSyncAt = 0;
+
+async function autoSyncLatest(reason: string) {
+  if (isSyncing) {
+    console.log(`⏭️ Auto-sync dilewati (masih berjalan) — pemicu: ${reason}`);
+    return;
+  }
+  isSyncing = true;
+  console.log(`🔄 [${reason}] Memulai auto-sync: Now Playing Bioskop, Upcoming, Film Indonesia, Trending...`);
   try {
     const stats = await syncCatalog(QUICK_SOURCES, DATA_FILE, { verbose: false });
-    cache = null;
-    console.log(`âœ… Auto-sync selesai: +${stats.added} baru, ~${stats.updated} diupdate! (Total DB: ${stats.total})`);
+    cache = null; // buang cache agar katalog terbaru langsung tersaji
+    lastSyncAt = Date.now();
+    console.log(`✅ Auto-sync selesai: +${stats.added} baru, ~${stats.updated} diupdate! (Total DB: ${stats.total})`);
   } catch (e) {
-    console.error('âŒ Auto-sync gagal:', (e as Error).message);
+    console.error('❌ Auto-sync gagal:', (e as Error).message);
+  } finally {
+    isSyncing = false;
   }
 }
-// Jalankan sinkronisasi sesaat setelah server siap, dan ulangi setiap 12 jam.
-setTimeout(autoSyncLatest, 5000);
-setInterval(autoSyncLatest, 12 * 60 * 60 * 1000);
+
+/** Auto-sync berjalan terus: langsung saat server nyala, lalu setiap 1 jam. */
+setTimeout(() => void autoSyncLatest('server-start'), 5000);
+setInterval(() => void autoSyncLatest('timer-1-jam'), 60 * 60 * 1000);
+
+/**
+ * Pemicu tambahan untuk lingkungan serverless (Vercel) yang process-nya mati-nyala:
+ * bila data di disk lebih tua dari 1 jam, sinkronisasi dijalankan di background
+ * saat ada pengunjung yang membuka katalog.
+ */
+function maybeStaleSync() {
+  const STALE_MS = 60 * 60 * 1000;
+  if (isSyncing) return;
+  if (lastSyncAt && Date.now() - lastSyncAt < STALE_MS) return;
+  try {
+    if (Date.now() - fs.statSync(DATA_FILE).mtimeMs < STALE_MS) return;
+  } catch {
+    /* file belum ada -> boleh sync */
+  }
+  void autoSyncLatest('stale-request');
+}
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
@@ -89,8 +118,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-/** GET /api/movies â€” list + search + filter + sort + pagination */
+/** GET /api/movies */
 app.get('/api/movies', async (req: Request, res: Response) => {
+  maybeStaleSync();
   const movies = loadMovies();
   const q = String(req.query.q ?? '').toLowerCase().trim();
   const genre = String(req.query.genre ?? '').toLowerCase().trim();
