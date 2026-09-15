@@ -4,7 +4,8 @@ import { FilterBar } from './components/FilterBar';
 import { MovieGrid } from './components/MovieGrid';
 import { MovieModal, type Movie } from './components/MovieModal';
 import { VideoPlayer } from './components/VideoPlayer';
-import { Play, Info, Star, Flame } from 'lucide-react';
+import { HistoryModal } from './components/HistoryModal';
+import { Play, Info, Star, Flame, X } from 'lucide-react';
 
 interface HeroSectionProps {
   movie: Movie;
@@ -149,6 +150,8 @@ export default function App() {
   const [playingMovie, setPlayingMovie] = useState<StreamInfo | null>(null);
 
   const [watchHistory, setWatchHistory] = useState<Movie[]>([]);
+  const [showAdNotice, setShowAdNotice] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   useEffect(() => {
     fetch('/api/genres')
@@ -189,6 +192,11 @@ export default function App() {
           }
         })
         .catch(() => {});
+    }
+
+    // Tampilkan pop-up iklan hanya sekali
+    if (!localStorage.getItem('ad_notice_seen')) {
+      setShowAdNotice(true);
     }
   }, []);
 
@@ -286,8 +294,7 @@ export default function App() {
         }}
         watchHistoryCount={watchHistory.length}
         onOpenHistory={() => {
-          // simple logic to show history
-          alert('Menu riwayat sedang dikembangkan, tetapi riwayat ada di halaman home.');
+          setShowHistoryModal(true);
         }}
       />
 
@@ -431,6 +438,58 @@ export default function App() {
               : undefined
           }
         />
+      )}
+      {/* History Modal */}
+      {showHistoryModal && (
+        <HistoryModal
+          history={watchHistory}
+          onClose={() => setShowHistoryModal(false)}
+          onWatch={(m) => handleWatch(m)}
+          onClearAll={() => {
+            localStorage.removeItem('watch_history');
+            setWatchHistory([]);
+          }}
+          onRemoveItem={(id) => {
+            const next = watchHistory.filter((m) => m.id !== id);
+            localStorage.setItem('watch_history', JSON.stringify(next));
+            setWatchHistory(next);
+          }}
+        />
+      )}
+
+      {/* Ad Notice Modal */}
+      {showAdNotice && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#16161f] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative animate-[skipPop_0.3s_ease-out_forwards]">
+            <button 
+              onClick={() => {
+                localStorage.setItem('ad_notice_seen', 'true');
+                setShowAdNotice(false);
+              }}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="w-12 h-12 rounded-full bg-brand-500/20 text-brand-500 flex items-center justify-center mb-4">
+              <Info className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Informasi Pemutaran</h3>
+            <p className="text-sm text-zinc-300 leading-relaxed mb-6">
+              Halo! Jika saat Anda menekan tombol <b>Play</b> atau memutar video tiba-tiba terbuka tab/jendela baru yang berisi iklan, itu adalah <b>bawaan dari server streaming</b>.
+              <br/><br/>
+              Cukup <b>tutup tab iklan tersebut</b> dan kembali ke tab FazuraDex ini untuk melanjutkan menonton dengan lancar.
+            </p>
+            <button
+              onClick={() => {
+                localStorage.setItem('ad_notice_seen', 'true');
+                setShowAdNotice(false);
+              }}
+              className="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition-colors shadow-lg shadow-brand-500/30"
+            >
+              Saya Mengerti
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
