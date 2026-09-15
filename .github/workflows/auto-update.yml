@@ -1,0 +1,39 @@
+name: Auto Update Now Playing & Movies
+
+on:
+  schedule:
+    # Berjalan otomatis setiap 6 jam
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-movies:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Fetch & Sync Latest Movies
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY || '08cb39d78204506e94b2c820aabad60a' }}
+          TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN || 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwOGNiMzlkNzgyMDQ1MDZlOTRiMmM4MjBhYWJhZDYwYSIsIm5iZiI6MTc4OTA0NjQwNy43NzQwMDAyLCJzdWIiOiI2YWEyYWU4NzQ0M2IzOTI3ZGI5MzAxOTYiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.hFjD9B7VL6UVzvWR3pf-oXsA787UoKd6T3R3g3EeBJ4' }}
+        run: |
+          npx tsx -e "const { syncCatalog, getQuickSources } = require('./src/syncCatalog.ts'); const path = require('path'); syncCatalog(getQuickSources(), path.resolve('output/movies.json'), { verbose: true });"
+
+      - name: Commit & Push Changes
+        run: |
+          git config --global user.name "FazuraDex Bot"
+          git config --global user.email "bot@fazuradex.local"
+          git add output/movies.json
+          git diff-index --quiet HEAD || (git commit -m "chore: auto-update now playing movies" && git push)
