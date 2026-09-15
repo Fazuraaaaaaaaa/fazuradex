@@ -9,6 +9,7 @@
     "dev:api": "tsx watch src/server.ts",
     "dev:ui": "npm run dev --prefix frontend",
     "build": "tsc",
+    "sync": "tsx src/syncCatalog.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

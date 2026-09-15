@@ -58,7 +58,6 @@ export function FilterBar({
           <option value="top_rated">⭐ Top Rating</option>
           <option value="now_playing">🎬 Sedang Tayang</option>
           <option value="upcoming">🗓️ Segera Hadir</option>
-          <option value="indonesia">🇮🇩 Film Indonesia</option>
           <option value="anime">✨ Anime & Animasi</option>
           <option value="horror">👻 Horor & Thriller</option>
           <option value="action">⚔️ Action</option>

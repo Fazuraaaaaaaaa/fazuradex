@@ -27,6 +27,7 @@ export const QUICK_SOURCES: SyncSource[] = [
   { label: 'Now Playing', endpoint: '/movie/now_playing', pages: 2, collection: 'now_playing' },
   { label: 'Upcoming', endpoint: '/movie/upcoming', pages: 2, collection: 'upcoming' },
   { label: 'Popular', endpoint: '/movie/popular', pages: 2, collection: 'popular' },
+  { label: 'Film Indonesia', endpoint: '/discover/movie', pages: 2, params: { with_original_language: 'id', sort_by: 'popularity.desc' }, collection: 'popular' },
   { label: 'Trending Minggu Ini', endpoint: '/trending/movie/week', pages: 2, collection: 'popular' },
   { label: 'Serial TV Trending', endpoint: '/trending/tv/week', pages: 2, collection: 'popular' },
 ];
@@ -40,7 +41,7 @@ export const FULL_SOURCES: SyncSource[] = [
   { label: 'Serial TV Top', endpoint: '/tv/popular', pages: 150, collection: 'popular' },
   { label: 'Drakor', endpoint: '/discover/tv', pages: 100, params: { with_original_language: 'ko', sort_by: 'popularity.desc' }, collection: 'drakor' },
   { label: 'Anime TV', endpoint: '/discover/tv', pages: 100, params: { with_original_language: 'ja', with_genres: 16, sort_by: 'popularity.desc' }, collection: 'anime' },
-  { label: 'Film Indonesia', endpoint: '/discover/movie', pages: 100, params: { with_original_language: 'id', sort_by: 'popularity.desc' }, collection: 'indonesia' },
+  { label: 'Film Indonesia', endpoint: '/discover/movie', pages: 100, params: { with_original_language: 'id', sort_by: 'popularity.desc' }, collection: 'popular' },
   { label: 'Anime & Animasi', endpoint: '/discover/movie', pages: 100, params: { with_genres: 16, sort_by: 'popularity.desc' }, collection: 'anime' },
   { label: 'Horror', endpoint: '/discover/movie', pages: 100, params: { with_genres: 27, sort_by: 'popularity.desc' }, collection: 'horror' },
   { label: 'Action', endpoint: '/discover/movie', pages: 100, params: { with_genres: 28, sort_by: 'popularity.desc' }, collection: 'action' },
@@ -160,4 +161,14 @@ export async function syncCatalog(
   const stats: SyncStats = { total: unique.length, added, updated, fetched, finishedAt: new Date().toISOString() };
   if (verbose) console.log(`📊 Sinkron selesai → total ${stats.total} film (+${added} baru, ~${updated} diperbarui)`);
   return stats;
+}
+
+if (require.main === module) {
+  const dataFile = path.resolve(__dirname, '../output/movies.json');
+  console.log('🔄 Memulai sinkronisasi katalog TMDB lengkap (Termasuk Film Indonesia)...');
+  syncCatalog(FULL_SOURCES, dataFile, { verbose: true }).then(() => {
+    console.log('✅ Selesai.');
+  }).catch((err) => {
+    console.error('❌ Terjadi kesalahan saat sinkronisasi:', err);
+  });
 }
