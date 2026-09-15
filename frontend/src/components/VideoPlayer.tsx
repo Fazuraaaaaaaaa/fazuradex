@@ -507,18 +507,16 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
             )}
           </div>
 
-          {/* KONTROL LAYAR PENUH + SETTING UNTUK IFRAME/YOUTUBE */}
-          {(isYoutube || isIframe) && (
-            <div className="absolute bottom-4 right-4 z-40 flex items-center gap-3">
-              <button
-                onClick={toggleFullscreen}
-                className="text-white hover:text-brand-400 transition-transform hover:scale-110 bg-black/50 hover:bg-black/70 backdrop-blur rounded-lg p-2"
-                title={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
-              >
-                {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
-              </button>
-            </div>
-          )}
+          {/* KONTROL LAYAR PENUH UNTUK SEMUA TIPE VIDEO */}
+          <div className="absolute bottom-4 right-4 z-40 flex items-center gap-3">
+            <button
+              onClick={toggleFullscreen}
+              className="text-white hover:text-brand-400 transition-transform hover:scale-110 bg-black/50 hover:bg-black/70 backdrop-blur rounded-lg p-2"
+              title={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
+            >
+              {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
+            </button>
+          </div>
 
           {!isYoutube && !isIframe && (
             <div className={'absolute bottom-0 left-0 right-0 px-6 py-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex flex-col gap-4 z-30 transition-opacity duration-500 ' + (showControls ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
@@ -562,10 +560,6 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
                       ))}
                     </div>
                   )}
-
-                  <button onClick={toggleFullscreen} className="text-white hover:text-brand-400 transition-transform hover:scale-110">
-                    {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
-                  </button>
                 </div>
               </div>
             </div>
