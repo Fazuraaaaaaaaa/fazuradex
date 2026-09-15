@@ -364,11 +364,11 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
       </div>
 
       {/* PLAYER WRAPPER */}
-      <div className="w-full bg-black flex justify-center border-b border-zinc-800">
+      <div className="w-full bg-[#09090b] flex justify-center border-b border-zinc-800/80">
         <div 
           ref={containerRef}
           onMouseMove={wakeControls}
-          className="relative w-full max-w-[1400px] aspect-video bg-black flex flex-col items-center justify-center select-none overflow-hidden"
+          className="relative w-full md:w-[90%] lg:w-[85%] max-w-[1400px] aspect-video bg-black flex flex-col items-center justify-center select-none overflow-hidden md:my-4 lg:my-6 md:rounded-xl shadow-2xl ring-1 ring-white/10"
         >
           {movie.posterUrl && (
             <div className="absolute inset-0 z-0 opacity-20 pointer-events-none overflow-hidden flex items-center justify-center">
