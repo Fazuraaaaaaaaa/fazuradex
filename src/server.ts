@@ -20,7 +20,7 @@ function saveMovies(movies: MovieDetail[]) {
   cache = { time: Date.now(), data: unique };
 }
 
-import { syncCatalog, QUICK_SOURCES } from './syncCatalog';
+import { syncCatalog, getQuickSources } from './syncCatalog';
 
 /** Sinkronisasi background otomatis — menambah terus film "Sedang Tayang di Bioskop", upcoming & trending. */
 let isSyncing = false;
@@ -34,7 +34,7 @@ async function autoSyncLatest(reason: string) {
   isSyncing = true;
   console.log(`🔄 [${reason}] Memulai auto-sync: Now Playing Bioskop, Upcoming, Film Indonesia, Trending...`);
   try {
-    const stats = await syncCatalog(QUICK_SOURCES, DATA_FILE, { verbose: false });
+    const stats = await syncCatalog(getQuickSources(), DATA_FILE, { verbose: false });
     cache = null; // buang cache agar katalog terbaru langsung tersaji
     lastSyncAt = Date.now();
     console.log(`✅ Auto-sync selesai: +${stats.added} baru, ~${stats.updated} diupdate! (Total DB: ${stats.total})`);
@@ -443,10 +443,10 @@ app.get('/api/movies/:id', async (req: Request, res: Response) => {
   res.json({ data: movie, related });
 });
 
-/** POST /api/refresh â€” jalankan sinkronisasi cepat dan aman tanpa menimpa database */
+/** POST /api/refresh */
 app.post('/api/refresh', async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const stats = await syncCatalog(QUICK_SOURCES, DATA_FILE, { verbose: false });
+    const stats = await syncCatalog(getQuickSources(), DATA_FILE, { verbose: false });
     cache = null; // buang cache
     res.json({ success: true, added: stats.added, updated: stats.updated, total: stats.total });
   } catch (err) {

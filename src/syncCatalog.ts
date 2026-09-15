@@ -22,16 +22,35 @@ export interface SyncStats {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Sumber "cepat" — dipakai auto-sync berkala & tombol refresh (± 300-500 film bioskop & terbaru). */
-export const QUICK_SOURCES: SyncSource[] = [
-  { label: 'Now Playing (Bioskop Global)', endpoint: '/movie/now_playing', pages: 10, collection: 'now_playing' },
-  { label: 'Now Playing (Bioskop Indonesia)', endpoint: '/discover/movie', pages: 5, params: { with_original_language: 'id', sort_by: 'primary_release_date.desc', 'vote_count.gte': 0 }, collection: 'now_playing' },
-  { label: 'Upcoming (Segera Tayang)', endpoint: '/movie/upcoming', pages: 5, collection: 'upcoming' },
-  { label: 'Popular', endpoint: '/movie/popular', pages: 5, collection: 'popular' },
-  { label: 'Film Indonesia Populer', endpoint: '/discover/movie', pages: 5, params: { with_original_language: 'id', sort_by: 'popularity.desc' }, collection: 'popular' },
-  { label: 'Trending Minggu Ini', endpoint: '/trending/movie/week', pages: 5, collection: 'popular' },
-  { label: 'Serial TV Trending', endpoint: '/trending/tv/week', pages: 5, collection: 'popular' },
-];
+/** Tanggal ISO (YYYY-MM-DD) n hari dari sekarang (negatif = masa lalu). */
+function shiftDays(n: number): string {
+  return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
+ * Sumber "cepat" — dipakai auto-sync berkala, cron, & tombol refresh.
+ * Fungsi (bukan konstanta) agar jendela tanggal rilis selalu segar walau server menyala berhari-hari:
+ * setiap panggilan akan menarik ulang film yang SEDANG TAYANG DI BIOSKOP (ID + global)
+ * serta film yang rilis dalam ± 4 bulan terakhir.
+ */
+export function getQuickSources(): SyncSource[] {
+  const from = shiftDays(-120); // rilis 4 bulan ke belakang
+  const to = shiftDays(75); // sampai 2,5 bulan ke depan
+  return [
+    { label: 'Sedang Tayang di Bioskop (Indonesia)', endpoint: '/movie/now_playing', pages: 5, params: { region: 'ID' }, collection: 'now_playing' },
+    { label: 'Sedang Tayang di Bioskop (Global)', endpoint: '/movie/now_playing', pages: 10, collection: 'now_playing' },
+    { label: 'Film Bioskop Indonesia Terbaru', endpoint: '/discover/movie', pages: 5, params: { with_original_language: 'id', 'primary_release_date.gte': from, 'primary_release_date.lte': to, sort_by: 'popularity.desc' }, collection: 'now_playing' },
+    { label: 'Film Bioskop Global Terbaru', endpoint: '/discover/movie', pages: 5, params: { 'primary_release_date.gte': from, 'primary_release_date.lte': to, sort_by: 'popularity.desc', 'vote_count.gte': 20 }, collection: 'now_playing' },
+    { label: 'Segera Tayang', endpoint: '/movie/upcoming', pages: 5, params: { region: 'ID' }, collection: 'upcoming' },
+    { label: 'Popular', endpoint: '/movie/popular', pages: 5, collection: 'popular' },
+    { label: 'Film Indonesia Populer', endpoint: '/discover/movie', pages: 5, params: { with_original_language: 'id', sort_by: 'popularity.desc' }, collection: 'popular' },
+    { label: 'Trending Minggu Ini', endpoint: '/trending/movie/week', pages: 5, collection: 'popular' },
+    { label: 'Serial TV Trending', endpoint: '/trending/tv/week', pages: 5, collection: 'popular' },
+  ];
+}
+
+/** Snapshot sumber cepat saat modul dimuat (pakai getQuickSources() untuk tanggal paling segar). */
+export const QUICK_SOURCES: SyncSource[] = getQuickSources();
 
 /** Sumber lengkap — dipakai CLI `npm run sync` untuk memperbesar katalog. */
 export const FULL_SOURCES: SyncSource[] = [
