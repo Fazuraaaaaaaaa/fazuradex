@@ -299,15 +299,63 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
     }
   };
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen().catch(() => {});
-      setIsFullscreen(false);
+  const requestContainerFullscreen = (): Promise<void> | null => {
+    const el = containerRef.current as
+      | (HTMLDivElement & { webkitRequestFullscreen?: () => void })
+      | null;
+    if (!el) return null;
+    if (typeof el.requestFullscreen === 'function') {
+      return el.requestFullscreen({ navigationUI: 'hide' });
     }
+    if (typeof el.webkitRequestFullscreen === 'function') {
+      el.webkitRequestFullscreen();
+      return Promise.resolve();
+    }
+    return null;
   };
+
+  const exitAppFullscreen = (): Promise<void> | null => {
+    const doc = document as Document & {
+      webkitExitFullscreen?: () => void;
+    };
+    if (typeof doc.exitFullscreen === 'function' && doc.fullscreenElement) {
+      return doc.exitFullscreen();
+    }
+    if (typeof doc.webkitExitFullscreen === 'function') {
+      doc.webkitExitFullscreen();
+      return Promise.resolve();
+    }
+    return null;
+  };
+
+  const toggleFullscreen = () => {
+    const doc = document as Document & { webkitFullscreenElement?: Element };
+    const inFs = Boolean(doc.fullscreenElement || doc.webkitFullscreenElement);
+    const promise = inFs ? exitAppFullscreen() : requestContainerFullscreen();
+    if (!promise) {
+      setErrorMsg('Layar penuh tidak didukung browser ini.');
+      return;
+    }
+    promise
+      .then(() => setIsFullscreen(!inFs))
+      .catch(() => {
+        setIsFullscreen(Boolean(document.fullscreenElement));
+      });
+  };
+
+  /* JAGA AGAR STATUS TOMBOL SELALU SINKRON (termasuk saat ESC ditekan) */
+  useEffect(() => {
+    const sync = () => {
+      const doc = document as Document & { webkitFullscreenElement?: Element };
+      setIsFullscreen(Boolean(doc.fullscreenElement || doc.webkitFullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync as EventListener);
+    return () => {
+      document.removeEventListener('fullscreenchange', sync);
+      document.removeEventListener('webkitfullscreenchange', sync as EventListener);
+    };
+  }, []);
 
   const setQuality = (index: number) => {
     if (hlsRef.current) {
@@ -430,6 +478,11 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
                 className={`w-full h-full border-none transition-opacity duration-500 ${iframeLoading ? 'opacity-0' : 'opacity-100'}`}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                 allowFullScreen
+                // @ts-ignore vendor prefix for Safari/older browsers
+                webkitallowfullscreen=""
+                // @ts-ignore vendor prefix for Firefox
+                mozallowfullscreen=""
+                scrolling="no"
                 onLoad={() => setIframeLoading(false)}
               />
             ) : (
@@ -453,6 +506,19 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
               </>
             )}
           </div>
+
+          {/* KONTROL LAYAR PENUH + SETTING UNTUK IFRAME/YOUTUBE */}
+          {(isYoutube || isIframe) && (
+            <div className="absolute bottom-4 right-4 z-40 flex items-center gap-3">
+              <button
+                onClick={toggleFullscreen}
+                className="text-white hover:text-brand-400 transition-transform hover:scale-110 bg-black/50 hover:bg-black/70 backdrop-blur rounded-lg p-2"
+                title={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
+              >
+                {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
+              </button>
+            </div>
+          )}
 
           {!isYoutube && !isIframe && (
             <div className={'absolute bottom-0 left-0 right-0 px-6 py-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex flex-col gap-4 z-30 transition-opacity duration-500 ' + (showControls ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
