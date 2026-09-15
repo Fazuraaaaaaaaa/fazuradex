@@ -459,32 +459,41 @@ export default function App() {
 
       {/* Ad Notice Modal */}
       {showAdNotice && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#16161f] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative animate-[skipPop_0.3s_ease-out_forwards]">
+        <div 
+          onClick={() => {
+            localStorage.setItem('ad_notice_seen', 'true');
+            setShowAdNotice(false);
+          }}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#16161f] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative animate-fade-up"
+          >
             <button 
               onClick={() => {
                 localStorage.setItem('ad_notice_seen', 'true');
                 setShowAdNotice(false);
               }}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white"
+              className="absolute top-4 right-4 p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
-            <div className="w-12 h-12 rounded-full bg-brand-500/20 text-brand-500 flex items-center justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center mb-4">
               <Info className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Informasi Pemutaran</h3>
-            <p className="text-sm text-zinc-300 leading-relaxed mb-6">
-              Halo! Jika saat Anda menekan tombol <b>Play</b> atau memutar video tiba-tiba terbuka tab/jendela baru yang berisi iklan, itu adalah <b>bawaan dari server streaming</b>.
+            <h3 className="text-lg font-bold text-white mb-2">Pemberitahuan Iklan</h3>
+            <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed mb-6">
+              Saat menekan tombol <b>Play</b> atau kontrol video, tab/jendela baru mungkin akan terbuka berisi iklan (bawaan dari server streaming pihak ketiga).
               <br/><br/>
-              Cukup <b>tutup tab iklan tersebut</b> dan kembali ke tab FazuraDex ini untuk melanjutkan menonton dengan lancar.
+              Silakan <b>tutup tab iklan tersebut</b> dan kembali ke FazuraDex untuk lanjut menonton tanpa gangguan.
             </p>
             <button
               onClick={() => {
                 localStorage.setItem('ad_notice_seen', 'true');
                 setShowAdNotice(false);
               }}
-              className="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition-colors shadow-lg shadow-brand-500/30"
+              className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/25 active:scale-[0.98]"
             >
               Saya Mengerti
             </button>
