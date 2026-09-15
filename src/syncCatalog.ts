@@ -22,14 +22,15 @@ export interface SyncStats {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Sumber "cepat" — dipakai auto-sync berkala & tombol refresh (± 60-100 film). */
+/** Sumber "cepat" — dipakai auto-sync berkala & tombol refresh (± 300-500 film bioskop & terbaru). */
 export const QUICK_SOURCES: SyncSource[] = [
-  { label: 'Now Playing', endpoint: '/movie/now_playing', pages: 2, collection: 'now_playing' },
-  { label: 'Upcoming', endpoint: '/movie/upcoming', pages: 2, collection: 'upcoming' },
-  { label: 'Popular', endpoint: '/movie/popular', pages: 2, collection: 'popular' },
-  { label: 'Film Indonesia', endpoint: '/discover/movie', pages: 2, params: { with_original_language: 'id', sort_by: 'popularity.desc' }, collection: 'popular' },
-  { label: 'Trending Minggu Ini', endpoint: '/trending/movie/week', pages: 2, collection: 'popular' },
-  { label: 'Serial TV Trending', endpoint: '/trending/tv/week', pages: 2, collection: 'popular' },
+  { label: 'Now Playing (Bioskop Global)', endpoint: '/movie/now_playing', pages: 10, collection: 'now_playing' },
+  { label: 'Now Playing (Bioskop Indonesia)', endpoint: '/discover/movie', pages: 5, params: { with_original_language: 'id', sort_by: 'primary_release_date.desc', 'vote_count.gte': 0 }, collection: 'now_playing' },
+  { label: 'Upcoming (Segera Tayang)', endpoint: '/movie/upcoming', pages: 5, collection: 'upcoming' },
+  { label: 'Popular', endpoint: '/movie/popular', pages: 5, collection: 'popular' },
+  { label: 'Film Indonesia Populer', endpoint: '/discover/movie', pages: 5, params: { with_original_language: 'id', sort_by: 'popularity.desc' }, collection: 'popular' },
+  { label: 'Trending Minggu Ini', endpoint: '/trending/movie/week', pages: 5, collection: 'popular' },
+  { label: 'Serial TV Trending', endpoint: '/trending/tv/week', pages: 5, collection: 'popular' },
 ];
 
 /** Sumber lengkap — dipakai CLI `npm run sync` untuk memperbesar katalog. */
