@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import {
   Play,
@@ -133,7 +133,6 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [buffered, setBuffered] = useState(0);
-  const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -141,12 +140,70 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
   const [currentQuality, setCurrentQuality] = useState<number>(-1);
   const [showSettings, setShowSettings] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
+  const [boostVolume, setBoostVolumeState] = useState(1);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const hideTimer = useRef<number | null>(null);
   const recoverAttempts = useRef(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
+
+  // Persiapan Web Audio API untuk volume boost (sampai 300%) + limiter anti pecah
+  const initAudioBoost = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || audioCtxRef.current) return;
+    try {
+      const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext);
+      if (!AudioCtx) return;
+      const audioCtx = new AudioCtx();
+      const source = audioCtx.createMediaElementSource(video);
+      const gainNode = audioCtx.createGain();
+      const compressor = audioCtx.createDynamicsCompressor();
+      compressor.threshold.value = -24;
+      compressor.knee.value = 12;
+      compressor.ratio.value = 6;
+      compressor.attack.value = 0.003;
+      compressor.release.value = 0.1;
+
+      source.connect(gainNode);
+      gainNode.connect(compressor);
+      compressor.connect(audioCtx.destination);
+      audioCtxRef.current = audioCtx;
+      gainNodeRef.current = gainNode;
+      compressorRef.current = compressor;
+      sourceNodeRef.current = source;
+      gainNode.gain.value = boostVolume;
+    } catch (e) {
+      console.warn('Web Audio API tidak tersedia', e);
+    }
+  }, [boostVolume]);
+
+  const setBoostVolume = useCallback((level: number) => {
+    if (gainNodeRef.current) {
+      // level 0..3, dimana 1 = volume normal 100%, 3 = 300%
+      gainNodeRef.current.gain.value = Math.max(0, Math.min(3, level));
+    }
+  }, []);
+
+  const cleanupAudioBoost = useCallback(() => {
+    try {
+      gainNodeRef.current?.disconnect();
+      compressorRef.current?.disconnect();
+      sourceNodeRef.current?.disconnect();
+      audioCtxRef.current?.close();
+    } catch (e) {
+      // ignore
+    } finally {
+      audioCtxRef.current = null;
+      gainNodeRef.current = null;
+      compressorRef.current = null;
+      sourceNodeRef.current = null;
+    }
+  }, []);
 
   const isYoutube = server.type === 'youtube';
   const isIframe = server.type === 'iframe';
@@ -245,8 +302,9 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
     return () => {
       hlsRef.current?.destroy();
       hlsRef.current = null;
+      cleanupAudioBoost();
     };
-  }, [server.url, server.type, movie.id, isYoutube]);
+  }, [server.url, server.type, movie.id, isYoutube, cleanupAudioBoost]);
 
   /* ===== SIMPAN POSISI TONTONAN ===== */
   useEffect(() => {
@@ -491,7 +549,7 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
                 poster={movie.posterUrl}
                 className="w-full h-full object-contain cursor-pointer"
                 onClick={togglePlay}
-                onPlay={() => setIsPlaying(true)}
+                onPlay={() => { setIsPlaying(true); initAudioBoost(); if (audioCtxRef.current?.state === 'suspended') { audioCtxRef.current.resume(); } }}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={() => { if (videoRef.current) setCurrentTime(videoRef.current.currentTime); }}
                 onLoadedMetadata={() => { if (videoRef.current) setDuration(videoRef.current.duration); }}
@@ -537,11 +595,23 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
                   </button>
                   <button onClick={() => skip(-10)} className="text-gray-300 hover:text-white transition-colors"><RotateCcw className="w-5 h-5" /></button>
                   <button onClick={() => skip(10)} className="text-gray-300 hover:text-white transition-colors"><RotateCw className="w-5 h-5" /></button>
-                  <div className="flex items-center gap-3 group/vol ml-2">
-                    <button onClick={() => { if (!videoRef.current) return; videoRef.current.muted = !videoRef.current.muted; setIsMuted(videoRef.current.muted); }} className="text-white hover:text-brand-400 transition-colors">
-                      {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                  <div className="flex items-center gap-3 group/vol ml-2 relative">
+                    <button onClick={() => { if (!videoRef.current) return; videoRef.current.muted = !videoRef.current.muted; setIsMuted(videoRef.current.muted); }} className="text-white hover:text-brand-400 transition-colors relative">
+                      {isMuted || boostVolume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                      {boostVolume > 1 && !isMuted && <span className="absolute -top-2 -right-2 text-[8px] bg-red-600 text-white px-1 rounded-full">{Math.round(boostVolume * 100)}%</span>}
                     </button>
-                    <input type="range" min={0} max={1} step={0.05} value={isMuted ? 0 : volume} onChange={(e) => { const v = parseFloat(e.target.value); setVolume(v); if (videoRef.current) { videoRef.current.volume = v; videoRef.current.muted = v === 0; setIsMuted(v === 0); } }} className="w-0 group-hover/vol:w-20 opacity-0 group-hover/vol:opacity-100 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-brand-500 transition-all duration-300" />
+                    <div className="flex items-center gap-2 w-0 group-hover/vol:w-32 opacity-0 group-hover/vol:opacity-100 transition-all duration-300">
+                      <input type="range" min={0} max={3} step={0.05} value={isMuted ? 0 : boostVolume} onChange={(e) => { 
+                        const v = parseFloat(e.target.value); 
+                        setBoostVolumeState(v); 
+                        setBoostVolume(v); 
+                        if (videoRef.current) { 
+                          videoRef.current.muted = v === 0; 
+                          setIsMuted(v === 0); 
+                          if (!gainNodeRef.current) videoRef.current.volume = Math.min(v, 1);
+                        } 
+                      }} className="w-full h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-brand-500" />
+                    </div>
                   </div>
                 </div>
 
