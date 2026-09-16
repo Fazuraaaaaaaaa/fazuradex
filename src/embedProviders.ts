@@ -28,10 +28,10 @@ export function defaultServers(
 ): EmbedServer[] {
   if (mediaType === 'tv') {
     return [
-      { serverId: 'vidlink', serverName: 'VidLink (Ultra HD)', type: 'iframe', url: `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?title=false&nextbutton=true&primaryColor=E50914`, quality: 'Multi-Source' },
-      { serverId: 'vidsrc', serverName: 'VidSrc PRO', type: 'iframe', url: `https://vidsrc.to/embed/tv/${tmdbId}/${season}/${episode}`, quality: 'Multi-Source' },
+      { serverId: 'vidsrc_me', serverName: 'VidSrc ME (Rekomendasi)', type: 'iframe', url: `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}`, quality: 'Auto' },
       { serverId: 'embedsu', serverName: 'EmbedSU (Fast)', type: 'iframe', url: `https://embed.su/embed/tv/${tmdbId}/${season}/${episode}`, quality: 'Auto' },
-      { serverId: 'vidsrc_me', serverName: 'VidSrc ME', type: 'iframe', url: `https://vidsrc.me/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}`, quality: 'Auto' },
+      { serverId: 'vidsrc', serverName: 'VidSrc PRO', type: 'iframe', url: `https://vidsrc.to/embed/tv/${tmdbId}/${season}/${episode}`, quality: 'Multi-Source' },
+      { serverId: 'vidlink', serverName: 'VidLink (Ultra HD)', type: 'iframe', url: `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?title=false&nextbutton=true&primaryColor=E50914`, quality: 'Multi-Source' },
       { serverId: 'autoembed', serverName: 'AutoEmbed', type: 'iframe', url: `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`, quality: 'Auto' },
       { serverId: '2embed', serverName: '2Embed Series', type: 'iframe', url: `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`, quality: 'Auto' },
       { serverId: 'vidfast', serverName: 'VidFast TV', type: 'iframe', url: `https://vidfast.pro/tv/${tmdbId}/${season}/${episode}`, quality: 'Auto' },
@@ -40,10 +40,10 @@ export function defaultServers(
   }
 
   return [
-    { serverId: 'vidlink', serverName: 'VidLink (Ultra HD)', type: 'iframe', url: `https://vidlink.pro/movie/${tmdbId}?title=false&primaryColor=E50914`, quality: 'Multi-Source' },
-    { serverId: 'vidsrc', serverName: 'VidSrc PRO', type: 'iframe', url: `https://vidsrc.to/embed/movie/${tmdbId}`, quality: 'Multi-Source' },
+    { serverId: 'vidsrc_me', serverName: 'VidSrc ME (Rekomendasi)', type: 'iframe', url: `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`, quality: 'Auto' },
     { serverId: 'embedsu', serverName: 'EmbedSU (Fast)', type: 'iframe', url: `https://embed.su/embed/movie/${tmdbId}`, quality: 'Auto' },
-    { serverId: 'vidsrc_me', serverName: 'VidSrc ME', type: 'iframe', url: `https://vidsrc.me/embed/movie?tmdb=${tmdbId}`, quality: 'Auto' },
+    { serverId: 'vidsrc', serverName: 'VidSrc PRO', type: 'iframe', url: `https://vidsrc.to/embed/movie/${tmdbId}`, quality: 'Multi-Source' },
+    { serverId: 'vidlink', serverName: 'VidLink (Ultra HD)', type: 'iframe', url: `https://vidlink.pro/movie/${tmdbId}?title=false&primaryColor=E50914`, quality: 'Multi-Source' },
     { serverId: 'autoembed', serverName: 'AutoEmbed', type: 'iframe', url: `https://autoembed.co/movie/tmdb/${tmdbId}`, quality: 'Auto' },
     { serverId: '2embed', serverName: '2Embed Cinema', type: 'iframe', url: `https://www.2embed.cc/embed/${tmdbId}`, quality: 'Auto' },
     { serverId: 'vidfast', serverName: 'VidFast Stream', type: 'iframe', url: `https://vidfast.pro/movie/${tmdbId}`, quality: 'Auto' },

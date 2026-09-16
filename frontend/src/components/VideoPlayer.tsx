@@ -70,12 +70,12 @@ const SERVER_RENAME_MAP: Record<string, string> = {
 };
 
 const SERVER_ORDER = [
-  'vidlink',
+  'vidsrc_me',
+  'vidsrcme',
   'vidsrc',
   'vidsrcpro',
   'embedsu',
-  'vidsrc_me',
-  'vidsrcme',
+  'vidlink',
   'autoembed',
   '2embed',
   'vidfast',
@@ -106,7 +106,8 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
     if (a.serverId === pref) return -1;
     if (b.serverId === pref) return 1;
     return 0;
-  });const [server, setServer] = useState<StreamItem>(sortedStreams[0]);
+  });
+  const [server, setServer] = useState<StreamItem>(sortedStreams[0]);
 
   useEffect(() => {
     try {
