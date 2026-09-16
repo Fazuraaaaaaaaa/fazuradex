@@ -5,6 +5,7 @@ import {
   Pause,
   Volume2,
   VolumeX,
+  Zap,
   Maximize,
   Minimize,
   Settings,
@@ -140,7 +141,13 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
   const [currentQuality, setCurrentQuality] = useState<number>(-1);
   const [showSettings, setShowSettings] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
-  const [boostVolume, setBoostVolumeState] = useState(1);
+  const [boostVolume, setBoostVolumeState] = useState(() => {
+    const saved = Number(localStorage.getItem('pref_volume'));
+    return Number.isFinite(saved) && saved > 0 && saved <= 3 ? saved : 1;
+  });
+  const [tabAmpOn, setTabAmpOn] = useState(false);
+  const [showAmpHelp, setShowAmpHelp] = useState(false);
+  const [ampMsg, setAmpMsg] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -183,11 +190,19 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
   }, [boostVolume]);
 
   const setBoostVolume = useCallback((level: number) => {
+    const clamped = Math.max(0, Math.min(3, level));
     if (gainNodeRef.current) {
-      // level 0..3, dimana 1 = volume normal 100%, 3 = 300%
-      gainNodeRef.current.gain.value = Math.max(0, Math.min(3, level));
+      gainNodeRef.current.gain.value = clamped;
+    }
+    if (tabAmpRef.current) {
+      tabAmpRef.current.gain.gain.value = Math.max(1, clamped);
     }
   }, []);
+
+  useEffect(() => {
+    setBoostVolume(boostVolume);
+    localStorage.setItem('pref_volume', String(boostVolume));
+  }, [boostVolume, setBoostVolume]);
 
   const cleanupAudioBoost = useCallback(() => {
     try {
@@ -204,6 +219,85 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
       sourceNodeRef.current = null;
     }
   }, []);
+
+  /* ===== PENGUAT AUDIO TAB (untuk server iframe / youtube) =====
+     Audio di dalam iframe domain lain (vidlink.pro, vidsrc, dll) tidak boleh
+     disentuh halaman kita karena Same-Origin Policy, jadi slider biasa mentok
+     100%. Satu-satunya jalur yang sah & didukung browser adalah menangkap
+     output audio tab atas seijin pengguna (getDisplayMedia + "share tab audio"),
+     lalu dinaikkan lewat GainNode. Hanya Chrome / Edge desktop. */
+  const tabAmpRef = useRef<{ ctx: AudioContext; stream: MediaStream; gain: GainNode } | null>(null);
+  const ampMsgTimer = useRef<number | null>(null);
+
+  const flashAmp = (msg: string) => {
+    setAmpMsg(msg);
+    if (ampMsgTimer.current) window.clearTimeout(ampMsgTimer.current);
+    ampMsgTimer.current = window.setTimeout(() => setAmpMsg(null), 7000);
+  };
+
+  const stopTabAmplifier = useCallback(() => {
+    const amp = tabAmpRef.current;
+    tabAmpRef.current = null;
+    setTabAmpOn(false);
+    if (!amp) return;
+    try {
+      amp.stream.getTracks().forEach((t) => t.stop());
+      void amp.ctx.close();
+    } catch (e) {
+      console.warn('Gagal menghentikan penguat audio', e);
+    }
+  }, []);
+
+  const startTabAmplifier = useCallback(async () => {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      flashAmp('Penguat audio butuh Chrome atau Edge (dukungan capture audio tab).');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 1 },
+        audio: true,
+        // @ts-ignore: opsi non-standard
+        preferCurrentTab: true,
+        // @ts-ignore: opsi non-standard
+        selfBrowserSurface: 'include',
+        // @ts-ignore: opsi non-standard
+        systemAudio: 'include',
+      });
+
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        stream.getTracks().forEach((t) => t.stop());
+        flashAmp('Audio tab tidak ikut tertangkap. Nyalakan opsi "Also share tab audio" di dialog browser, lalu coba lagi.');
+        return;
+      }
+
+      const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new Ctor();
+      const source = ctx.createMediaStreamSource(new MediaStream(audioTracks));
+      const gain = ctx.createGain();
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -18;
+      limiter.knee.value = 10;
+      limiter.ratio.value = 8;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.15;
+      gain.gain.value = Math.max(1, Math.min(3, boostVolume));
+      source.connect(gain);
+      gain.connect(limiter);
+      limiter.connect(ctx.destination);
+
+      stream.getVideoTracks()[0]?.addEventListener('ended', () => stopTabAmplifier());
+      tabAmpRef.current = { ctx, stream, gain };
+      setTabAmpOn(true);
+      flashAmp('Penguat aktif. Kecilkan volume di player VidLink ke ±40%, lalu atur slider Boost sampai 300%.');
+    } catch (e) {
+      console.warn('Capture audio ditolak:', e);
+      flashAmp('Izin capture dibatalkan. Klik Boost lalu pilih tab ini dan aktifkan "Also share tab audio".');
+    }
+  }, [boostVolume, stopTabAmplifier]);
+
+  useEffect(() => stopTabAmplifier, [stopTabAmplifier]);
 
   const isYoutube = server.type === 'youtube';
   const isIframe = server.type === 'iframe';
@@ -469,12 +563,12 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
         <div className="w-10 sm:w-20"></div>
       </div>
 
-      {/* PLAYER WRAPPER */}
+          {/* PLAYER WRAPPER */}
       <div className="w-full bg-[#09090b] flex justify-center border-b border-zinc-800/80">
         <div 
           ref={containerRef}
           onMouseMove={wakeControls}
-          className="relative w-full md:w-[90%] lg:w-[85%] max-w-[1400px] aspect-video bg-black flex flex-col items-center justify-center select-none overflow-hidden md:my-4 lg:my-6 md:rounded-xl shadow-2xl ring-1 ring-white/10"
+          className="relative w-full md:w-[90%] lg:w-[85%] max-w-[1400px] aspect-video bg-black flex flex-col items-center justify-center select-none overflow-hidden md:my-4 lg:my-6 md:rounded-xl shadow-2xl ring-1 ring-white/10 group"
         >
           {movie.posterUrl && (
             <div className="absolute inset-0 z-0 opacity-20 pointer-events-none overflow-hidden flex items-center justify-center">
@@ -565,11 +659,49 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
             )}
           </div>
 
+          {/* PESAN PENGUAT AUDIO */}
+          {ampMsg && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+              <div className="bg-night-900/90 backdrop-blur border border-brand-500/50 text-white text-xs sm:text-sm px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(239,68,68,0.3)] max-w-sm text-center">
+                {ampMsg}
+              </div>
+            </div>
+          )}
+
+          {/* KONTROL I-FRAME & YOUTUBE (OVERLAY KECIL) */}
+          {(isIframe || isYoutube) && (
+            <div className={`absolute bottom-4 right-16 z-40 flex items-center gap-3 transition-opacity duration-300 ${showControls || tabAmpOn || showAmpHelp ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="flex items-center gap-2 group/amp relative" onMouseEnter={() => setShowAmpHelp(true)} onMouseLeave={() => setShowAmpHelp(false)}>
+                {tabAmpOn ? (
+                  <div className="flex items-center gap-2 bg-black/60 backdrop-blur rounded-lg p-1.5 px-3">
+                    <button onClick={stopTabAmplifier} className="text-brand-500 hover:text-red-400 transition-colors flex items-center gap-1" title="Matikan Penguat">
+                      <Zap className="w-5 h-5 fill-current animate-pulse" />
+                    </button>
+                    <input type="range" min={1} max={3} step={0.05} value={boostVolume} onChange={(e) => setBoostVolumeState(parseFloat(e.target.value))} className="w-20 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-brand-500" />
+                    <span className="text-[10px] font-mono text-brand-400">{Math.round(boostVolume * 100)}%</span>
+                  </div>
+                ) : (
+                  <button onClick={startTabAmplifier} className="text-white hover:text-brand-400 transition-transform hover:scale-110 bg-black/50 hover:bg-black/70 backdrop-blur rounded-lg p-2 flex items-center gap-2" title="Nyalakan Penguat Volume Iframe">
+                    <Zap className="w-5 h-5" />
+                    <span className="text-xs font-bold hidden sm:inline">Boost</span>
+                  </button>
+                )}
+                
+                {showAmpHelp && !tabAmpOn && (
+                  <div className="absolute bottom-full right-0 mb-3 bg-night-900/95 backdrop-blur border border-white/10 p-3 rounded-xl shadow-2xl w-64 text-xs text-gray-300 z-50 pointer-events-none">
+                    <p className="font-bold text-white mb-1">Volume Boost untuk Iframe</p>
+                    <p>Karena batasan browser pada video dari server lain, fitur Boost butuh izin <strong>Screen Record (Share Tab Audio)</strong>.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* KONTROL LAYAR PENUH UNTUK SEMUA TIPE VIDEO */}
-          <div className="absolute bottom-4 right-4 z-40 flex items-center gap-3">
+          <div className="absolute bottom-4 right-4 z-40 flex items-center gap-3 transition-opacity duration-300">
             <button
               onClick={toggleFullscreen}
-              className="text-white hover:text-brand-400 transition-transform hover:scale-110 bg-black/50 hover:bg-black/70 backdrop-blur rounded-lg p-2"
+              className={`text-white hover:text-brand-400 transition-transform hover:scale-110 bg-black/50 hover:bg-black/70 backdrop-blur rounded-lg p-2 ${(isIframe || isYoutube) && !showControls ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}
               title={isFullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
             >
               {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
