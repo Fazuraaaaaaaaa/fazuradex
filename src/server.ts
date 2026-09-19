@@ -83,11 +83,12 @@ app.use(helmet({
       connectSrc: ["*"],
       fontSrc: ["*", "data:"],
       frameSrc: ["*"],
-      frameAncestors: ["'none'"],
     },
   },
   crossOriginEmbedderPolicy: false,
-  xFrameOptions: { action: "deny" },
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+  xFrameOptions: { action: "sameorigin" },
 }));
 // Tambahan header Permissions-Policy
 app.use((_req, res, next) => {
