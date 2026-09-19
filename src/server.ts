@@ -81,6 +81,8 @@ app.use(helmet({
       imgSrc: ["*", "data:"],
       mediaSrc: ["*", "blob:"],
       connectSrc: ["*"],
+      fontSrc: ["*", "data:"],
+      frameSrc: ["*"],
       frameAncestors: ["'none'"],
     },
   },
