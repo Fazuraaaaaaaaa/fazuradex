@@ -73,8 +73,25 @@ const FRONTEND_DIST = path.resolve(__dirname, '../frontend/dist');
 
 // Optimasi: Keamanan Header
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["*", "data:"],
+      mediaSrc: ["*", "blob:"],
+      connectSrc: ["*"],
+      frameAncestors: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  xFrameOptions: { action: "deny" },
 }));
+// Tambahan header Permissions-Policy
+app.use((_req, res, next) => {
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
 
 app.use(cors()); // Allow all origins for production domains (fazuradex.web.id)
 app.use(express.json());
@@ -82,10 +99,10 @@ app.use(express.json());
 // Optimasi: Kompresi response
 app.use(compression());
 
-// Optimasi: Rate limiting untuk semua rute API
+// Optimasi: Rate limiting untuk semua rute API (Cegah abuse/flood ke TMDB)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 menit
-  max: 1000, // Limit tiap IP hingga 1000 request
+  max: 150, // Limit tiap IP hingga 150 request (cukup untuk browsing wajar)
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -120,6 +137,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 /** GET /api/movies */
 app.get('/api/movies', async (req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
   maybeStaleSync();
   const movies = loadMovies();
   const q = String(req.query.q ?? '').toLowerCase().trim();
@@ -414,6 +432,7 @@ app.post('/api/movies/:id/comments', express.json(), (req: Request, res: Respons
 
 /** GET /api/movies/:id â€” detail satu film */
 app.get('/api/movies/:id', async (req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
   let movies = loadMovies();
   let movie = movies.find((m) => m.id === req.params.id);
 

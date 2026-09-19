@@ -153,6 +153,8 @@ export default function App() {
   const [showAdNotice, setShowAdNotice] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
+  const [heroMovie, setHeroMovie] = useState<Movie | null>(null);
+
   useEffect(() => {
     fetch('/api/genres')
       .then((res) => res.json())
@@ -171,6 +173,15 @@ export default function App() {
           setTotalInDb(data.totalMovies);
         }
       });
+
+    fetch('/api/movies/969681')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.data) {
+          setHeroMovie(data.data);
+        }
+      })
+      .catch(console.error);
 
     try {
       const histStr = localStorage.getItem('watch_history');
@@ -301,11 +312,11 @@ export default function App() {
       <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-8 flex flex-col gap-8">
         
         {/* Render Hero Section only on main page */}
-        {page === 1 && !searchQuery && movies.length > 0 && collection === 'all' && (
-          <HeroSection 
-            movie={movies[0]}
-            onWatch={() => handleWatch(movies[0])}
-            onDetail={() => setSelectedMovie(movies[0])}
+        {page === 1 && !searchQuery && collection === 'all' && (heroMovie ?? (movies.length > 0 ? movies[0] : null)) && (
+          <HeroSection
+            movie={heroMovie ?? movies[0]}
+            onWatch={() => handleWatch(heroMovie ?? movies[0])}
+            onDetail={() => setSelectedMovie(heroMovie ?? movies[0])}
           />
         )}
 
@@ -419,6 +430,12 @@ export default function App() {
           </div>
         )}
       </main>
+        {/* TMDB Attribution Footer */}
+        <footer className="mt-12 py-6 border-t border-white/10 text-center">
+          <p className="text-zinc-500 text-xs sm:text-sm">
+            This product uses the TMDB API but is not endorsed or certified by TMDB.
+          </p>
+        </footer>
 
       {selectedMovie && (
         <MovieModal
@@ -486,6 +503,8 @@ export default function App() {
             <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed mb-6">
               Saat menekan tombol <b>Play</b> atau kontrol video, tab/jendela baru mungkin akan terbuka berisi iklan (bawaan dari server streaming pihak ketiga).
               <br/><br/>
+              <br/><br/>
+              <b>Atribusi TMDB:</b> Aplikasi ini menggunakan API TMDB tetapi tidak didukung atau disertifikasi oleh TMDB.
               Silakan <b>tutup tab iklan tersebut</b> dan kembali ke FazuraDex untuk lanjut menonton tanpa gangguan.
             </p>
             <button
