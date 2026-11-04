@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, Star, PlayCircle, Film, Share2, ListVideo, Tv, AlertCircle } from 'lucide-react';
+import { CalendarDays, Clock, Star, PlayCircle, Film, Share2, ListVideo, Tv } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { CommentsSection } from './CommentsSection';
 
@@ -36,24 +36,6 @@ export function MovieModal({ movie, onClose, onWatch }: MovieModalProps) {
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
-
-  const [isPlayable, setIsPlayable] = useState<boolean | null>(null);
-  const [checkingHealth, setCheckingHealth] = useState<boolean>(true);
-
-  useEffect(() => {
-    setCheckingHealth(true);
-    fetch(`/api/movies/${movie.id}/health`)
-      .then((res) => res.json())
-      .then((data) => {
-        setIsPlayable(data.hasPlayableSource ?? true);
-      })
-      .catch(() => {
-        setIsPlayable(true);
-      })
-      .finally(() => {
-        setCheckingHealth(false);
-      });
-  }, [movie.id]);
 
   useEffect(() => {
     if (isTv) {
@@ -163,18 +145,11 @@ export function MovieModal({ movie, onClose, onWatch }: MovieModalProps) {
           <div className="flex flex-col md:flex-row gap-0">
             {/* Poster kecil */}
             <div className="hidden md:block w-[200px] shrink-0 pt-8 pl-8">
-              {isPlayable === false ? (
-                <div className="w-full aspect-[2/3] rounded border border-dashed border-zinc-800 bg-night-800 flex flex-col items-center justify-center p-4 text-center">
-                  <Film className="w-8 h-8 text-zinc-600 mb-2" />
-                  <span className="text-xs text-zinc-500 font-medium">Poster disembunyikan (Sumber video offline)</span>
-                </div>
-              ) : (
-                <img
-                  src={movie.posterUrl}
-                  alt={movie.title}
-                  className="w-full rounded border border-zinc-800 object-cover shadow-xl"
-                />
-              )}
+              <img
+                src={movie.posterUrl}
+                alt={movie.title}
+                className="w-full rounded border border-zinc-800 object-cover shadow-xl"
+              />
             </div>
 
             {/* Detail info */}
@@ -224,21 +199,13 @@ export function MovieModal({ movie, onClose, onWatch }: MovieModalProps) {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                {isPlayable === false ? (
-                  <div className="flex items-center gap-2 px-5 py-3 rounded text-sm bg-zinc-800/80 text-zinc-500 font-bold border border-dashed border-zinc-700 w-full">
-                    <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span>Semua server video sedang bermasalah — poster disembunyikan sementara. Silakan coba lagi nanti.</span>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => (isTv ? onWatch(movie, 1, 1) : onWatch(movie))}
-                    disabled={checkingHealth}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded text-sm bg-brand-500 text-white font-bold hover:bg-brand-600 transition-colors shadow-lg disabled:opacity-60"
-                  >
-                    <PlayCircle className="w-5 h-5" />
-                    {checkingHealth ? 'Cek Server...' : isTv ? 'Tonton S1:E1' : 'Tonton Sekarang'}
-                  </button>
-                )}
+                <button
+                  onClick={() => (isTv ? onWatch(movie, 1, 1) : onWatch(movie))}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded text-sm bg-brand-500 text-white font-bold hover:bg-brand-600 transition-colors shadow-lg"
+                >
+                  <PlayCircle className="w-5 h-5" />
+                  {isTv ? 'Tonton S1:E1' : 'Tonton Sekarang'}
+                </button>
                 <button
                   onClick={handleShare}
                   className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded text-sm bg-zinc-800 text-zinc-200 font-bold hover:bg-zinc-700 transition-colors border border-zinc-700"

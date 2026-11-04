@@ -20,51 +20,10 @@ function saveMovies(movies: MovieDetail[]) {
   cache = { time: Date.now(), data: unique };
 }
 
-import { syncCatalog, getQuickSources } from './syncCatalog';
-
-/** Sinkronisasi background otomatis — menambah terus film "Sedang Tayang di Bioskop", upcoming & trending. */
-let isSyncing = false;
-let lastSyncAt = 0;
-
-async function autoSyncLatest(reason: string) {
-  if (isSyncing) {
-    console.log(`⏭️ Auto-sync dilewati (masih berjalan) — pemicu: ${reason}`);
-    return;
-  }
-  isSyncing = true;
-  console.log(`🔄 [${reason}] Memulai auto-sync: Now Playing Bioskop, Upcoming, Film Indonesia, Trending...`);
-  try {
-    const stats = await syncCatalog(getQuickSources(), DATA_FILE, { verbose: false });
-    cache = null; // buang cache agar katalog terbaru langsung tersaji
-    lastSyncAt = Date.now();
-    console.log(`✅ Auto-sync selesai: +${stats.added} baru, ~${stats.updated} diupdate! (Total DB: ${stats.total})`);
-  } catch (e) {
-    console.error('❌ Auto-sync gagal:', (e as Error).message);
-  } finally {
-    isSyncing = false;
-  }
-}
-
-/** Auto-sync berjalan terus: langsung saat server nyala, lalu setiap 1 jam. */
-setTimeout(() => void autoSyncLatest('server-start'), 5000);
-setInterval(() => void autoSyncLatest('timer-1-jam'), 60 * 60 * 1000);
-
-/**
- * Pemicu tambahan untuk lingkungan serverless (Vercel) yang process-nya mati-nyala:
- * bila data di disk lebih tua dari 1 jam, sinkronisasi dijalankan di background
- * saat ada pengunjung yang membuka katalog.
- */
-function maybeStaleSync() {
-  const STALE_MS = 60 * 60 * 1000;
-  if (isSyncing) return;
-  if (lastSyncAt && Date.now() - lastSyncAt < STALE_MS) return;
-  try {
-    if (Date.now() - fs.statSync(DATA_FILE).mtimeMs < STALE_MS) return;
-  } catch {
-    /* file belum ada -> boleh sync */
-  }
-  void autoSyncLatest('stale-request');
-}
+// Sinkronisasi katalog tidak boleh berjalan dari process API/serverless.
+// Jalankan secara eksplisit melalui `npm run sync`, lalu deploy output/movies.json
+// yang dihasilkan. Menjalankan sinkronisasi TMDB per instance atau per request akan
+// menghabiskan Fluid Active CPU dan filesystem Vercel tidak menyimpan hasilnya.
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
@@ -141,7 +100,6 @@ app.get('/api/health', (_req: Request, res: Response) => {
 /** GET /api/movies */
 app.get('/api/movies', async (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
-  maybeStaleSync();
   const movies = loadMovies();
   const q = String(req.query.q ?? '').toLowerCase().trim();
   const genre = String(req.query.genre ?? '').toLowerCase().trim();
@@ -202,6 +160,28 @@ app.get('/api/movies', async (req: Request, res: Response) => {
   }
 
   switch (sort) {
+    case 'default':
+      // Beranda & kategori umum hanya menampilkan film yang sudah tayang sampai hari ini.
+      // Film masa depan (2027, 2028, dst) hanya boleh muncul bila user membuka koleksi "upcoming".
+      if (collection !== 'upcoming') {
+        const today = Date.now();
+        result = result.filter((m) => {
+          const t = parseDate(m.releaseDateIso || m.releaseDate);
+          return t > 0 && t <= today;
+        });
+      }
+      result.sort((a, b) => parseDate(b.releaseDateIso || b.releaseDate) - parseDate(a.releaseDateIso || a.releaseDate));
+      break;
+    case 'date_desc':
+      if (collection !== 'upcoming') {
+        const today = Date.now();
+        result = result.filter((m) => {
+          const t = parseDate(m.releaseDateIso || m.releaseDate);
+          return t > 0 && t <= today;
+        });
+      }
+      result.sort((a, b) => parseDate(b.releaseDateIso || b.releaseDate) - parseDate(a.releaseDateIso || a.releaseDate));
+      break;
     case 'rating_desc': {
       // Skor tertimbang ala IMDb agar film dengan 1 vote tidak menyalip The Godfather.
       const C = 6.5; // rata-rata rating global
@@ -216,9 +196,6 @@ app.get('/api/movies', async (req: Request, res: Response) => {
     }
     case 'title_asc':
       result.sort((a, b) => a.title.localeCompare(b.title));
-      break;
-    case 'date_desc':
-      result.sort((a, b) => parseDate(b.releaseDateIso || b.releaseDate) - parseDate(a.releaseDateIso || a.releaseDate));
       break;
     case 'date_asc':
       result.sort((a, b) => parseDate(a.releaseDateIso || a.releaseDate) - parseDate(b.releaseDateIso || b.releaseDate));
@@ -342,7 +319,7 @@ app.get('/api/movies/:id/stream', async (req: Request, res: Response) => {
   const tmdbId = movie.tmdbId || movie.id;
   const mediaType = movie.mediaType || 'movie';
 
-  // 1. Cek secara real-time dan kembalikan HANYA server yang valid/bisa memutar
+  // 1. Ambil semua server embed yang tersedia untuk film ini
   const streamList = await resolveEmbedServers(tmdbId, movie.title, mediaType, season, episode);
 
   if (streamList.length === 0) {
@@ -361,7 +338,7 @@ app.get('/api/movies/:id/stream', async (req: Request, res: Response) => {
     posterUrl: movie.posterUrl,
     description: movie.description,
     year: movie.releaseDate?.match(/(19|20)\d{2}/)?.[0] || 'Unknown',
-    streams: streamList, // Kirim semua stream yang lulus uji
+    streams: streamList, // Kirim semua server ke frontend
     streamUrl: streamList[0].url,
     type: streamList[0].type,
     sourceLabel: streamList[0].serverName,
@@ -465,15 +442,12 @@ app.get('/api/movies/:id', async (req: Request, res: Response) => {
   res.json({ data: movie, related });
 });
 
-/** POST /api/refresh */
-app.post('/api/refresh', async (_req: Request, res: Response, next: NextFunction) => {
-  try {
-    const stats = await syncCatalog(getQuickSources(), DATA_FILE, { verbose: false });
-    cache = null; // buang cache
-    res.json({ success: true, added: stats.added, updated: stats.updated, total: stats.total });
-  } catch (err) {
-    next(err);
-  }
+/** POST /api/refresh — disabled in serverless production. */
+app.post('/api/refresh', (_req: Request, res: Response) => {
+  res.status(503).json({
+    success: false,
+    error: 'Catalog refresh is disabled in production. Run `npm run sync` before deploying.',
+  });
 });
 
 function parseDate(str: string): number {

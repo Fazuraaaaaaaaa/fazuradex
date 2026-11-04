@@ -55,33 +55,59 @@ function parseYouTubeId(url: string): string | null {
 }
 
 const SERVER_RENAME_MAP: Record<string, string> = {
-  'vidlink': 'vidlinkultrahd',
-  'vidsrc': 'vidsrcpro',
-  'vidsrcpro': 'vidsrcpro',
-  'embedsu': 'embedsufast',
-  'vidsrc_me': 'vidsrcme',
-  'vidsrcme': 'vidsrcme',
-  'autoembed': 'autoembed',
-  '2embed': '2embedcinema',
-  'vidfast': 'vidfaststream',
-  'vidfaststream': 'vidfaststream',
-  'videasy': 'videasyhd',
-  'videasyhd': 'videasyhd',
+  'vidlink': 'VidLink (Ultra HD)',
+  'vidsrc': 'VidSrc PRO',
+  'vidsrc_to': 'VidSrc PRO',
+  'vidsrcpro': 'VidSrc PRO',
+  'vidsrc_me': 'VidSrc',
+  'vidsrcme': 'VidSrc',
+  'embedsu': 'EmbedSU',
+  'autoembed': 'AutoEmbed',
+  '2embed': '2Embed',
+  'multiembed': 'MultiEmbed',
+  'smashystream': 'SmashyStream',
+  'nontongo': 'NontonGo (ID)',
+  'vidfast': 'VidFast',
+  'vidfaststream': 'VidFast',
+  'videasy': 'VidEasy',
+  'videasyhd': 'VidEasy',
+  'moviesapi': 'MoviesAPI',
+  'superembed': 'SuperEmbed',
+  'frembed': 'FrEmbed',
+  'tvembeds': 'TV Embeds',
+  'rive': 'RiveStream',
+  'vidsrcnl': 'VidSrc NL',
+  'vidplay': 'VidPlay',
+  'cinezone': 'CineZone',
+  'embedrise': 'EmbedRise',
 };
 
 const SERVER_ORDER = [
   'vidsrc_me',
   'vidsrcme',
+  'vidsrc_to',
   'vidsrc',
   'vidsrcpro',
-  'embedsu',
   'vidlink',
+  'embedsu',
   'autoembed',
+  'multiembed',
+  'nontongo',
   '2embed',
+  'smashystream',
   'vidfast',
   'vidfaststream',
   'videasy',
   'videasyhd',
+  'moviesapi',
+  'superembed',
+  'frembed',
+  'tvembeds',
+  'rive',
+  'vidsrcnl',
+  'vidplay',
+  'cinezone',
+  'embedrise',
 ];
 
 export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps) {
@@ -672,25 +698,38 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
 
         {/* SERVERS SECTION */}
         <div className="bg-[#0f0f13] rounded-2xl border border-zinc-800/60 p-5 md:p-6 shadow-xl mb-10">
-          <div className="flex items-center gap-3 mb-6">
-            <MonitorPlay className="w-5 h-5 text-violet-500" />
-            <h2 className="text-lg font-bold text-white tracking-wide">Servers</h2>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <MonitorPlay className="w-5 h-5 text-violet-500" />
+              <h2 className="text-lg font-bold text-white tracking-wide">Servers</h2>
+              <span className="text-xs text-zinc-500 font-medium">({orderedStreams.length} tersedia)</span>
+            </div>
+            <span className="text-[10px] text-zinc-600 italic hidden sm:inline">Jika error, coba server lain</span>
           </div>
 
-          <div className="flex flex-wrap gap-2 md:gap-3">
+          <div className="flex flex-wrap gap-2 md:gap-2.5">
             {orderedStreams.map((st) => {
-              const displayName = SERVER_RENAME_MAP[st.serverId] || st.serverName.toLowerCase().replace(/[^a-z0-9]/g, '');
+              const displayName = SERVER_RENAME_MAP[st.serverId] || st.serverName;
+              const isActive = server.serverId === st.serverId;
+              const qualityBadge = st.quality === 'FHD' ? '4K' : st.quality === 'HD' ? 'HD' : null;
               return (
                 <button
                   key={st.serverId}
                   onClick={() => setServer(st)}
-                  className={`px-4 md:px-5 py-2.5 rounded-lg text-xs md:text-sm font-medium transition-all ${
-                    server.serverId === st.serverId
-                      ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30 font-semibold'
-                      : 'bg-[#1b1b23] text-zinc-300 hover:bg-[#252530] hover:text-white'
+                  className={`relative flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30 font-semibold ring-1 ring-violet-400'
+                      : 'bg-[#1b1b23] text-zinc-300 hover:bg-[#252530] hover:text-white border border-zinc-800/50'
                   }`}
                 >
                   {displayName}
+                  {qualityBadge && (
+                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-zinc-700 text-zinc-400'
+                    }`}>
+                      {qualityBadge}
+                    </span>
+                  )}
                 </button>
               );
             })}
