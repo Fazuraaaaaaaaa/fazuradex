@@ -3,9 +3,30 @@ import * as path from 'path';
 
 const OUTPUT_DIR = path.resolve(__dirname, '..', 'output');
 
-function ensureOutputDir(): void {
+export function ensureOutputDir(): void {
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  }
+}
+
+/**
+ * Tulis file JSON secara atomik menggunakan file temporer untuk mencegah korupsi data.
+ * Aman di lingkungan serverless atau read-only (mengembalikan false alih-alih melempar error).
+ */
+export function safeWriteJson(filePath: string, data: unknown, pretty = false): boolean {
+  try {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const tempFile = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 6)}`;
+    const content = pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data);
+    fs.writeFileSync(tempFile, content, 'utf-8');
+    fs.renameSync(tempFile, filePath);
+    return true;
+  } catch (err) {
+    console.warn(`⚠️ Gagal menulis file aman ke ${filePath}:`, (err as Error).message);
+    return false;
   }
 }
 
@@ -15,7 +36,7 @@ function ensureOutputDir(): void {
 export function saveToJson<T>(fileName: string, data: T[]): string {
   ensureOutputDir();
   const filePath = path.join(OUTPUT_DIR, fileName);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  safeWriteJson(filePath, data, true);
   return filePath;
 }
 

@@ -174,11 +174,13 @@ export default function App() {
         }
       });
 
-    fetch('/api/movies/969681')
+    // Fetch dynamic featured/popular movie for hero banner
+    fetch('/api/movies?collection=popular&page=1')
       .then((res) => res.json())
       .then((data) => {
-        if (data && data.data) {
-          setHeroMovie(data.data);
+        if (data && data.data && data.data.length > 0) {
+          const featured = data.data.find((m: Movie) => m.posterUrl && m.description) || data.data[0];
+          setHeroMovie(featured);
         }
       })
       .catch(console.error);
@@ -254,6 +256,14 @@ export default function App() {
 
 
 
+  const clearWatchParam = () => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('watch')) {
+      url.searchParams.delete('watch');
+      window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+    }
+  };
+
   const handleWatch = async (movie: Movie, season?: number, episode?: number) => {
     try {
       const q = new URLSearchParams();
@@ -262,6 +272,7 @@ export default function App() {
       const res = await fetch(`/api/movies/${movie.id}/stream?${q.toString()}`);
       const data = await res.json();
       if (data.streams && data.streams.length > 0) {
+        clearWatchParam();
         setSelectedMovie(null);
         setPlayingMovie({
           id: data.id,
@@ -440,7 +451,10 @@ export default function App() {
       {selectedMovie && (
         <MovieModal
           movie={selectedMovie}
-          onClose={() => setSelectedMovie(null)}
+          onClose={() => {
+            setSelectedMovie(null);
+            clearWatchParam();
+          }}
           onWatch={handleWatch}
         />
       )}
@@ -448,7 +462,15 @@ export default function App() {
       {playingMovie && (
         <VideoPlayer
           movie={playingMovie}
-          onClose={() => setPlayingMovie(null)}
+          onClose={() => {
+            setPlayingMovie(null);
+            clearWatchParam();
+          }}
+          onPrevEpisode={
+            playingMovie.mediaType === 'tv' && playingMovie.season && playingMovie.episode && playingMovie.episode > 1
+              ? () => handleWatch(playingMovie as any, playingMovie.season, (playingMovie.episode || 1) - 1)
+              : undefined
+          }
           onNextEpisode={
             playingMovie.mediaType === 'tv' && playingMovie.season && playingMovie.episode
               ? () => handleWatch(playingMovie as any, playingMovie.season, (playingMovie.episode || 1) + 1)
@@ -501,11 +523,9 @@ export default function App() {
             </div>
             <h3 className="text-lg font-bold text-white mb-2">Pemberitahuan Iklan</h3>
             <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed mb-6">
-              Saat menekan tombol <b>Play</b> atau kontrol video, tab/jendela baru mungkin akan terbuka berisi iklan (bawaan dari server streaming pihak ketiga).
+              Saat menekan tombol <b>Play</b> atau kontrol pemutar video, tab/jendela baru mungkin akan terbuka berisi iklan dari server streaming pihak ketiga.
               <br/><br/>
-              <br/><br/>
-              <b>Atribusi TMDB:</b> Aplikasi ini menggunakan API TMDB tetapi tidak didukung atau disertifikasi oleh TMDB.
-              Silakan <b>tutup tab iklan tersebut</b> dan kembali ke FazuraDex untuk lanjut menonton tanpa gangguan.
+              Silakan <b>tutup tab iklan tersebut</b> dan kembali ke FazuraDex untuk melanjutkan tontonan tanpa gangguan.
             </p>
             <button
               onClick={() => {

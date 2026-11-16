@@ -44,6 +44,7 @@ interface VideoPlayerProps {
   movie: PlayingMovie;
   onClose: () => void;
   onNextEpisode?: () => void;
+  onPrevEpisode?: () => void;
 }
 
 function parseYouTubeId(url: string): string | null {
@@ -110,7 +111,7 @@ const SERVER_ORDER = [
   'embedrise',
 ];
 
-export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps) {
+export function VideoPlayer({ movie, onClose, onNextEpisode, onPrevEpisode }: VideoPlayerProps) {
   const safeStreams = movie.streams && movie.streams.length > 0 ? movie.streams : [{
     serverId: 'fallback',
     serverName: 'Fallback Server',
@@ -134,6 +135,26 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
     return 0;
   });
   const [server, setServer] = useState<StreamItem>(sortedStreams[0]);
+
+  // Sync / reset server state whenever the movie ID, episode, or season changes (fixes episode switch bug)
+  useEffect(() => {
+    const pref = localStorage.getItem('pref_server');
+    const matched = sortedStreams.find(s => s.serverId === pref) || sortedStreams[0];
+    if (matched) {
+      setServer(matched);
+      setErrorMsg(null);
+    }
+  }, [movie.id, movie.season, movie.episode]);
+
+  const handleTryNextServer = () => {
+    const currentIndex = orderedStreams.findIndex(s => s.serverId === server.serverId);
+    const nextIndex = (currentIndex + 1) % orderedStreams.length;
+    const nextServer = orderedStreams[nextIndex];
+    if (nextServer && nextServer.serverId !== server.serverId) {
+      setErrorMsg(null);
+      setServer(nextServer);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -460,6 +481,15 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
       if (isYoutube || isIframe) return;
       if (e.key === ' ') { e.preventDefault(); togglePlay(); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); skip(10); }
@@ -518,10 +548,27 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
           )}
 
           {errorMsg && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md px-6 text-center">
-              <AlertTriangle className="w-16 h-16 text-brand-500 mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]" />
-              <h2 className="text-xl font-bold text-white mb-2">Streaming Terputus</h2>
-              <p className="text-gray-300 max-w-md">{errorMsg}</p>
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md px-6 text-center">
+              <AlertTriangle className="w-14 h-14 text-brand-500 mb-3 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]" />
+              <h2 className="text-lg md:text-xl font-bold text-white mb-2">Streaming Mengalami Kendala</h2>
+              <p className="text-zinc-300 text-xs md:text-sm max-w-md mb-5">{errorMsg}</p>
+              <div className="flex items-center gap-3 flex-wrap justify-center">
+                {orderedStreams.length > 1 && (
+                  <button
+                    onClick={handleTryNextServer}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs md:text-sm transition-all shadow-lg shadow-red-600/30 active:scale-95"
+                  >
+                    <RotateCw className="w-4 h-4" />
+                    Coba Server Lain ({orderedStreams.length} tersedia)
+                  </button>
+                )}
+                <button
+                  onClick={() => setErrorMsg(null)}
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs md:text-sm transition-colors border border-white/15"
+                >
+                  Tutup Notifikasi
+                </button>
+              </div>
             </div>
           )}
 
@@ -687,7 +734,15 @@ export function VideoPlayer({ movie, onClose, onNextEpisode }: VideoPlayerProps)
             <button className="flex items-center gap-2 bg-[#1b1b23] border border-zinc-800 hover:bg-[#252530] text-zinc-300 hover:text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors">
               <ListVideo className="w-4 h-4" /> <span className="hidden sm:inline">Playlist</span>
             </button>
-            <button className="flex items-center gap-2 bg-[#1b1b23] border border-zinc-800 hover:bg-[#252530] text-zinc-300 hover:text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors">
+            <button
+              onClick={onPrevEpisode}
+              disabled={!onPrevEpisode}
+              className={`flex items-center gap-2 border px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors ${
+                onPrevEpisode
+                  ? 'bg-[#1b1b23] border-zinc-800 hover:bg-[#252530] text-zinc-300 hover:text-white'
+                  : 'bg-[#0f0f13] border-zinc-900 text-zinc-700 cursor-not-allowed'
+              }`}
+            >
               <ChevronLeft className="w-4 h-4" /> <span className="hidden sm:inline">Prev</span>
             </button>
             <button onClick={onNextEpisode} disabled={!onNextEpisode} className={`flex items-center gap-2 border px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors ${onNextEpisode ? 'bg-[#1b1b23] border-zinc-800 hover:bg-[#252530] text-zinc-300 hover:text-white' : 'bg-[#0f0f13] border-zinc-900 text-zinc-700 cursor-not-allowed'}`}>

@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fetchTmdbList } from './tmdb';
 import type { MovieDetail } from './types';
+import { safeWriteJson } from './utils';
 
 export interface SyncSource {
   label: string;
@@ -138,7 +139,9 @@ export async function syncCatalog(
   opts: { verbose?: boolean } = {},
 ): Promise<SyncStats> {
   const verbose = opts.verbose ?? true;
-  if (!fs.existsSync(dataFile)) fs.writeFileSync(dataFile, '[]', 'utf-8');
+  const dir = path.dirname(dataFile);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(dataFile)) safeWriteJson(dataFile, []);
   const existing = JSON.parse(fs.readFileSync(dataFile, 'utf-8')) as MovieDetail[];
   const index = new Map<string, MovieDetail>(existing.map((m) => [String(m.id), m]));
 
@@ -164,19 +167,19 @@ export async function syncCatalog(
         }
       }
       srcCount += items.length;
-      await sleep(25);
+      await sleep(100);
     }
     
-    // Tulis bertahap setiap kategori agar data tidak hilang kalau terhenti
+    // Tulis bertahap setiap kategori secara atomik agar data tidak korup kalau terhenti
     const unique = Array.from(index.values());
-    fs.writeFileSync(dataFile, JSON.stringify(unique), 'utf-8');
+    safeWriteJson(dataFile, unique);
     
     if (verbose) console.log(`   ✓ [${src.label}] ${srcCount} hasil diproses`);
   }
 
-  // tulis ulang file (sudah ter-dedup via index map)
+  // tulis ulang file (sudah ter-dedup via index map) secara atomik
   const unique = Array.from(index.values());
-  fs.writeFileSync(dataFile, JSON.stringify(unique), 'utf-8');
+  safeWriteJson(dataFile, unique);
 
   const stats: SyncStats = { total: unique.length, added, updated, fetched, finishedAt: new Date().toISOString() };
   if (verbose) console.log(`📊 Sinkron selesai → total ${stats.total} film (+${added} baru, ~${updated} diperbarui)`);

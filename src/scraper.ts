@@ -30,8 +30,8 @@ export async function scrapeMovies(options: ScrapeOptions = {}): Promise<MovieDe
     if (page < pageCount) await sleep(300);
   }
 
-  // Hilangkan duplikat berdasarkan URL
-  const unique = Array.from(new Map(all.map((m) => [m.url, m])).values());
+  // Hilangkan duplikat berdasarkan ID atau URL
+  const unique = Array.from(new Map(all.map((m) => [m.id || m.url, m])).values());
   console.log(`\n🎬 Total unik: ${unique.length} film`);
 
   if (!fetchDetails) {
@@ -42,11 +42,15 @@ export async function scrapeMovies(options: ScrapeOptions = {}): Promise<MovieDe
   const results: MovieDetail[] = [];
   for (let i = 0; i < unique.length; i++) {
     const movie = unique[i] as MovieItem;
-    process.stdout.write(`   [${i + 1}/${unique.length}] ${movie.title}\r`);
-    const detail = await scrapeMovieDetail(movie.url);
-    results.push({ ...movie, ...detail });
+    console.log(`   [${i + 1}/${unique.length}] ${movie.title}`);
+    try {
+      const detail = await scrapeMovieDetail(movie.url);
+      results.push({ ...movie, ...detail });
+    } catch (err) {
+      console.warn(`   ✗ Detail ${movie.title} gagal:`, (err as Error).message);
+      results.push({ ...movie });
+    }
     await sleep(250);
   }
-  console.log('');
   return results;
 }

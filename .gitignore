@@ -12,3 +12,5 @@ dist/
 *.csv
 output/*.csv
 .env*
+*.tsbuildinfo
+

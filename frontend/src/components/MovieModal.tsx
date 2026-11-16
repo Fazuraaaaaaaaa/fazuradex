@@ -66,6 +66,16 @@ export function MovieModal({ movie, onClose, onWatch }: MovieModalProps) {
   }, [movie.id, selectedSeason, isTv]);
 
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handleShare = async () => {
     const url = `${window.location.origin}/?watch=${movie.id}`;
     if (navigator.share) {
@@ -93,6 +103,9 @@ export function MovieModal({ movie, onClose, onWatch }: MovieModalProps) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="movie-modal-title"
     >
       <div className="absolute inset-0 bg-black/90 transition-opacity" />
 
@@ -102,6 +115,7 @@ export function MovieModal({ movie, onClose, onWatch }: MovieModalProps) {
       >
         <button
           onClick={onClose}
+          aria-label="Tutup modal"
           className="absolute top-4 right-4 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-black/60 backdrop-blur-md text-white hover:bg-black transition-colors border border-white/10"
         >
           ✕
@@ -165,7 +179,7 @@ export function MovieModal({ movie, onClose, onWatch }: MovieModalProps) {
                 ))}
               </div>
 
-              <h2 className="text-3xl sm:text-4xl font-bold text-zinc-100 mb-3 tracking-tight leading-tight">
+              <h2 id="movie-modal-title" className="text-3xl sm:text-4xl font-bold text-zinc-100 mb-3 tracking-tight leading-tight">
                 {movie.title}
               </h2>
 
